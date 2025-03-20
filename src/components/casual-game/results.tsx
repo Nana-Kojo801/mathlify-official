@@ -1,7 +1,6 @@
 import Review from "./review";
 import { CheckCircle, Clock, LogOut, RotateCcw, XCircle } from "lucide-react";
 import { Button } from "../ui/button";
-import React from "react";
 import { cn } from "@/lib/utils";
 
 export const Timeout = ({
@@ -11,7 +10,7 @@ export const Timeout = ({
 }: {
   playAgain: () => void;
   quit: () => void;
-  TimeoutActions?: () => JSX.Element;
+  TimeoutActions?: () => React.JSX.Element;
 }) => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center text-white p-6">
@@ -61,7 +60,7 @@ export const Wrong = ({
 }: {
   playAgain: () => void;
   quit: () => void;
-  WrongActions?: () => JSX.Element;
+  WrongActions?: () => React.JSX.Element;
 }) => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center text-white p-6">
@@ -111,7 +110,7 @@ export const Correct = ({
 }: {
   playAgain: () => void;
   quit: () => void;
-  CorrectActions?: () => JSX.Element;
+  CorrectActions?: () => React.JSX.Element;
 }) => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center text-white p-6">

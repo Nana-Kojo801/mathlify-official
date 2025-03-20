@@ -6,13 +6,14 @@ import Answer from "./answer";
 import { Correct, Timeout, Wrong } from "./results";
 import { useNavigate } from "react-router";
 import { PropsWithChildren, useEffect, useRef } from "react";
+import React from "react";
 
 type CasualGameProps = PropsWithChildren & {
   quitTo: string;
   resultActions?: {
-    correct?: () => JSX.Element;
-    wrong?: () => JSX.Element;
-    timeout?: () => JSX.Element;
+    correct?: () => React.JSX.Element;
+    wrong?: () => React.JSX.Element;
+    timeout?: () => React.JSX.Element;
   };
 };
 

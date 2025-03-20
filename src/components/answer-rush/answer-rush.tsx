@@ -5,9 +5,10 @@ import Questioning from "./questioning";
 import { useEffect, useRef } from "react";
 import Results from "./results";
 import { useNavigate } from "react-router";
+import React from "react";
 
 type AnswerRushProps = {
-  CustomResults?: () => JSX.Element;
+  CustomResults?: () => React.JSX.Element;
 };
 
 const AnswerRush = ({ CustomResults }: AnswerRushProps) => {

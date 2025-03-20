@@ -7,10 +7,10 @@ import { Link } from "react-router";
 type UserListProps = {
   children?: React.ReactNode;
   list: User[];
-  actions?: (user: User) => JSX.Element;
-  fallback?: () => JSX.Element;
+  actions?: (user: User) => React.JSX.Element;
+  fallback?: () => React.JSX.Element;
   className?: string;
-  render?: (user: User) => JSX.Element;
+  render?: (user: User) => React.JSX.Element;
 };
 
 const UserList = ({
