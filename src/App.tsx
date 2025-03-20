@@ -4,51 +4,57 @@ import SplashScreen from "./components/splash-screen";
 import NotFoundPage from "./routes/not-found";
 
 // Lazy load components
-const RootLayout = lazy(() => import("@/routes/layout"));
-const IndexPage = lazy(() => import("@/routes/page"));
-const AuthLayout = lazy(() => import("@/routes/(auth)/layout"));
-const SignupPage = lazy(() => import("@/routes/(auth)/signup/page"));
-const LoginPage = lazy(() => import("@/routes/(auth)/login/page"));
-const AppLayout = lazy(() => import("@/routes/(app)/layout"));
-const HomePage = lazy(() => import("@/routes/(app)/page"));
-const PracticePage = lazy(() => import("@/routes/(app)/practice/page"));
+const RootLayout = lazy(() => import("@/routes/layout.tsx"));
+const IndexPage = lazy(() => import("@/routes/page.tsx"));
+const AuthLayout = lazy(() => import("@/routes/(auth)/layout.tsx"));
+const SignupPage = lazy(() => import("@/routes/(auth)/signup/page.tsx"));
+const LoginPage = lazy(() => import("@/routes/(auth)/login/page.tsx"));
+const AppLayout = lazy(() => import("@/routes/(app)/layout.tsx"));
+const HomePage = lazy(() => import("@/routes/(app)/page.tsx"));
+const PracticePage = lazy(() => import("@/routes/(app)/practice/page.tsx"));
 const CasualPracticePlayPage = lazy(
-  () => import("@/routes/(app)/practice/casual/page")
+  () => import("@/routes/(app)/practice/casual/page.tsx")
 );
-const MarathonPage = lazy(() => import("@/routes/(app)/marathon/page"));
+const MarathonPage = lazy(() => import("@/routes/(app)/marathon/page.tsx"));
 const MarathonPlayPage = lazy(
-  () => import("@/routes/(app)/marathon/play/page")
+  () => import("@/routes/(app)/marathon/play/page.tsx")
 );
 const AnswerRushPlayPage = lazy(
-  () => import("@/routes/(app)/practice/answer-rush/page")
+  () => import("@/routes/(app)/practice/answer-rush/page.tsx")
 );
 const EditProfilePage = lazy(
-  () => import("./routes/(app)/profile/edit-profile/page")
+  () => import("./routes/(app)/profile/edit-profile/page.tsx")
 );
-const SearchUsersPage = lazy(() => import("./routes/(app)/search-users/page"));
+const SearchUsersPage = lazy(
+  () => import("./routes/(app)/search-users/page.tsx")
+);
 const FriendRequestsPage = lazy(
-  () => import("./routes/(app)/friend-requests/page")
+  () => import("./routes/(app)/friend-requests/page.tsx")
 );
-const FriendChatPage = lazy(() => import("./routes/(app)/chat/page"));
-const ProfilePage = lazy(() => import("./routes/(app)/profile/page"));
-const OnlinePage = lazy(() => import("./routes/(app)/online/page"));
+const FriendChatPage = lazy(() => import("./routes/(app)/chat/page.tsx"));
+const ProfilePage = lazy(() => import("./routes/(app)/profile/page.tsx"));
+const OnlinePage = lazy(() => import("./routes/(app)/online/page.tsx"));
 const CreateRoomPage = lazy(
-  () => import("./routes/(app)/online/create-room/page")
+  () => import("./routes/(app)/online/create-room/page.tsx")
 );
-const RoomPage = lazy(() => import("./routes/(app)/online/room/page"));
-const MemebersPage = lazy(
-  () => import("./routes/(app)/online/room/members/page")
+const RoomPage = lazy(() => import("./routes/(app)/online/room/page.tsx"));
+const MembersPage = lazy(
+  () => import("./routes/(app)/online/room/members/page.tsx")
 );
 const RoomSuspenseLayout = lazy(
-  () => import("./routes/(app)/online/room/layout")
+  () => import("./routes/(app)/online/room/layout.tsx")
 );
-const JoinRoomPage = lazy(() => import("./routes/(app)/online/join-room/page"));
-const RoomChatPage = lazy(() => import("./routes/(app)/online/room/chat/page"));
+const JoinRoomPage = lazy(
+  () => import("./routes/(app)/online/join-room/page.tsx")
+);
+const RoomChatPage = lazy(
+  () => import("./routes/(app)/online/room/chat/page.tsx")
+);
 const GameSettingsPage = lazy(
-  () => import("./routes/(app)/online/room/game-settings/page")
+  () => import("./routes/(app)/online/room/game-settings/page.tsx")
 );
 const OnlinePlayPage = lazy(
-  () => import("./routes/(app)/online/room/play/page")
+  () => import("./routes/(app)/online/room/play/page.tsx")
 );
 
 const App = () => {
@@ -87,14 +93,14 @@ const App = () => {
             <Route path="online/join-room" element={<JoinRoomPage />} />
             <Route path="online/room/:roomId" element={<RoomSuspenseLayout />}>
               <Route index element={<RoomPage />} />
-              <Route path="members" element={<MemebersPage />} />
+              <Route path="members" element={<MembersPage />} />
               <Route path="chat" element={<RoomChatPage />} />
               <Route path="game-settings" element={<GameSettingsPage />} />
               <Route path="play" element={<OnlinePlayPage />} />
             </Route>
           </Route>
 
-          <Route path="*" element={<NotFoundPage />}/>
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </Suspense>
