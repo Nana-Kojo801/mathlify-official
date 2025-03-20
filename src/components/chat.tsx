@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { cn } from "@/lib/utils";
+import React from "react";
 
 type ChatProps<T, I> = {
   messages: T[];
@@ -19,7 +20,7 @@ type ChatProps<T, I> = {
   render: (
     message: T,
     setSelectedMessage: React.Dispatch<unknown>
-  ) => JSX.Element;
+  ) => React.JSX.Element;
   className?: string;
 };
 
