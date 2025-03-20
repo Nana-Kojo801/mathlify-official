@@ -32,8 +32,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": "./src",
-      "@convex": "./convex"
+      "@": "/src",
+      "@convex": "/convex"
     },
   },
 });
