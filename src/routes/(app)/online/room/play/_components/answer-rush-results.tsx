@@ -9,7 +9,6 @@ import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
 import { useEffect } from "react";
-import { GameState } from "@convex/_generated/dataModel";
 
 interface GameResult {
   userId: string;
@@ -24,16 +23,22 @@ const AnswerRushResults = () => {
   const user = useLiveUser();
   const updateUser = useConvexMutation(api.users.updateUser);
 
-  // Subscribe to game state
+  // Subscribe to game state and room data for results
   const { data: gameState } = useQuery(
     convexQuery(api.games.getGameState, {
       roomId,
     })
   );
+  
+  const { data: room } = useQuery(
+    convexQuery(api.rooms.getRoom, {
+      id: roomId,
+    })
+  );
 
-  // Get current game results
-  const currentGame = gameState?.answerRushResults?.find(
-    (game: { gameId: string }) => game.gameId === gameState.currentGameId
+  // Get current game results from room data
+  const currentGame = room?.answerRushResults?.find(
+    (game: { gameId: string }) => game.gameId === gameState?.currentGameId
   );
 
   // Update user stats when game ends
@@ -46,10 +51,14 @@ const AnswerRushResults = () => {
     if (!userResult) return;
 
     const isWinner = userResult.rank === 1;
+    // Update only valid fields for the user
     updateUser({
       id: user._id,
-      gamesWon: isWinner ? 1 : 0,
-      gamesLost: isWinner ? 0 : 1,
+      // Store wins/losses in the elo object
+      elo: {
+        ...user.elo,
+        answerRush: user.elo?.answerRush + (isWinner ? 10 : -5)
+      }
     });
   }, [currentGame, user, updateUser]);
 
