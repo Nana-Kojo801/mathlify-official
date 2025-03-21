@@ -3,7 +3,7 @@ import NavFooter from "./_components/nav-footer";
 import { Outlet, useNavigate, useParams } from "react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRoomQuery } from "./queries";
-import { Suspense, useCallback, useEffect, useRef } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Room } from "@/lib/types";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
@@ -25,6 +25,7 @@ const RoomLayout = () => {
   const recoverGame = useConvexMutation(api.games.recoverGame);
   const deleteRoom = useConvexMutation(api.rooms.deleteRoom);
   const user = useLiveUser();
+  const [, setTick] = useState(0);
 
   // Subscribe to game state changes
   const { data: gameState } = useQuery(
@@ -32,6 +33,17 @@ const RoomLayout = () => {
       roomId: params.roomId as Room["_id"],
     })
   );
+
+  // Update countdown timer
+  useEffect(() => {
+    if (gameState?.phase !== "countdown") return;
+    
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState?.phase]);
 
   // Update player presence
   useEffect(() => {
@@ -80,6 +92,7 @@ const RoomLayout = () => {
             roomId: room._id,
             phase: "playing",
           });
+          navigate(`/app/online/room/${room._id}/play`);
         }
         break;
 
@@ -89,6 +102,7 @@ const RoomLayout = () => {
             roomId: room._id,
             phase: "finished",
           });
+          navigate(`/app/online/room/${room._id}`);
         }
         break;
 
@@ -96,7 +110,7 @@ const RoomLayout = () => {
         toast.error(gameState.error?.message || "Game error occurred");
         break;
     }
-  }, [gameState, room._id, room.gameSettings, initAnswerRushGame, updateGameState]);
+  }, [gameState, room._id, room.gameSettings, initAnswerRushGame, updateGameState, navigate]);
 
   // Handle room owner leaving
   useEffect(() => {
