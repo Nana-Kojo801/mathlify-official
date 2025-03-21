@@ -9,12 +9,20 @@ import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
 import { useEffect } from "react";
+import { GameState } from "@convex/_generated/dataModel";
+
+interface GameResult {
+  userId: string;
+  username: string;
+  score: number;
+  rank: number;
+}
 
 const AnswerRushResults = () => {
   const navigate = useNavigate();
-  const { roomId, room } = useOutletContext<OutletContext>();
+  const { roomId } = useOutletContext<OutletContext>();
   const user = useLiveUser();
-  const updateUserStats = useConvexMutation(api.users.updateUserStats);
+  const updateUser = useConvexMutation(api.users.updateUser);
 
   // Subscribe to game state
   const { data: gameState } = useQuery(
@@ -24,8 +32,8 @@ const AnswerRushResults = () => {
   );
 
   // Get current game results
-  const currentGame = gameState?.games.find(
-    (game) => game._id === gameState.currentGameId
+  const currentGame = gameState?.answerRushResults?.find(
+    (game: { gameId: string }) => game.gameId === gameState.currentGameId
   );
 
   // Update user stats when game ends
@@ -33,17 +41,17 @@ const AnswerRushResults = () => {
     if (!currentGame || !user) return;
 
     const userResult = currentGame.results.find(
-      (result) => result.userId === user._id
+      (result: GameResult) => result.userId === user._id
     );
     if (!userResult) return;
 
     const isWinner = userResult.rank === 1;
-    updateUserStats({
-      userId: user._id,
+    updateUser({
+      id: user._id,
       gamesWon: isWinner ? 1 : 0,
       gamesLost: isWinner ? 0 : 1,
     });
-  }, [currentGame, user, updateUserStats]);
+  }, [currentGame, user, updateUser]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -65,8 +73,8 @@ const AnswerRushResults = () => {
       <h2 className="text-2xl font-bold">Game Results</h2>
       <div className="w-full max-w-md space-y-4">
         {currentGame.results
-          .sort((a, b) => a.rank - b.rank)
-          .map((result) => (
+          .sort((a: GameResult, b: GameResult) => a.rank - b.rank)
+          .map((result: GameResult) => (
             <div
               key={result.userId}
               className="flex items-center justify-between p-4 bg-card rounded-lg"
