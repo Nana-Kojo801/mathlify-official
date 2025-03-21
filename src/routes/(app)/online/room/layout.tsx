@@ -183,7 +183,12 @@ const RoomLayout = () => {
     <PageLayout className="fixed left-0 top-0 bg-background">
       <main className="flex-grow flex flex-col overflow-y-auto">
         <Outlet
-          context={{ room, roomId: params.roomId as Room["_id"], startGame }}
+          context={{ 
+            room, 
+            roomId: params.roomId as Room["_id"], 
+            startGame,
+            isGameStarting 
+          }}
         />
       </main>
       <NavFooter />
