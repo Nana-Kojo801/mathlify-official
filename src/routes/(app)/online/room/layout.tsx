@@ -24,6 +24,7 @@ const RoomLayout = () => {
   const updateGameState = useConvexMutation(api.games.updateGameState);
   const recoverGame = useConvexMutation(api.games.recoverGame);
   const deleteRoom = useConvexMutation(api.rooms.deleteRoom);
+  const setGameId = useConvexMutation(api.rooms.setGameId);
   const user = useLiveUser();
   const [, setTick] = useState(0);
 
@@ -88,11 +89,23 @@ const RoomLayout = () => {
           if (room.gameSettings.type === "Answer Rush") {
             initAnswerRushGame(room.gameSettings.answerRush);
           }
+          
+          // Create a game ID
+          const newGameId = String(crypto.randomUUID());
+          
+          // First set the game ID
+          setGameId({
+            roomId: room._id,
+            gameId: newGameId,
+          });
+          
+          // Then update the game state to playing
           updateGameState({
             roomId: room._id,
             phase: "playing",
-            currentGameId: String(crypto.randomUUID()),
+            currentGameId: newGameId,
           });
+          
           navigate(`/app/online/room/${room._id}/play`);
         }
         break;
@@ -118,7 +131,7 @@ const RoomLayout = () => {
         toast.error(gameState.error?.message || "Game error occurred");
         break;
     }
-  }, [gameState, room._id, room.gameSettings, initAnswerRushGame, updateGameState, navigate]);
+  }, [gameState, room._id, room.gameSettings, initAnswerRushGame, updateGameState, navigate, setGameId]);
 
   // Handle room owner leaving
   useEffect(() => {

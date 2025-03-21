@@ -220,15 +220,20 @@ export const setGameId = mutation({
   args: { roomId: v.id("rooms"), gameId: v.string() },
   handler: async (ctx, { roomId, gameId }) => {
     const room = (await ctx.db.get(roomId))!;
+    
+    // Check if the game already exists
+    const gameExists = room.answerRushResults.some(
+      (result) => result.gameId === gameId
+    );
+    
+    // Only add a new game if it doesn't already exist
+    const updatedResults = gameExists 
+      ? room.answerRushResults 
+      : [...room.answerRushResults, { gameId, results: [] }];
+    
     await ctx.db.patch(roomId, {
       currentGameId: gameId,
-      answerRushResults: [
-        ...room.answerRushResults,
-        {
-          gameId,
-          results: [],
-        },
-      ],
+      answerRushResults: updatedResults,
     });
   },
 });
@@ -243,9 +248,17 @@ export const updateAnswerRushScore = mutation({
   handler: async (ctx, { roomId, userId, score, gameId }) => {
     const room = (await ctx.db.get(roomId))!;
     const user = (await ctx.db.get(userId))!;
-    const currentGame = room.answerRushResults.find(
+    
+    // Check if the game exists and create it if it doesn't
+    let currentGame = room.answerRushResults.find(
       (result) => result.gameId === gameId
-    )!;
+    );
+    
+    if (!currentGame) {
+      // Initialize the game if it doesn't exist
+      currentGame = { gameId, results: [] };
+      room.answerRushResults.push(currentGame);
+    }
 
     if (!currentGame.results.find((result) => result.userId === userId)) {
       currentGame.results.push({
