@@ -9,7 +9,6 @@ import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
 import { useEffect, useMemo } from "react";
-import { Id } from "@convex/_generated/dataModel";
 
 const AnswerRushResults = () => {
   const navigate = useNavigate();
