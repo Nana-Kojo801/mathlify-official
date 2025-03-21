@@ -18,6 +18,7 @@ const OnlineAnswerRushPlayPage = () => {
   const updateScore = useConvexMutation(api.rooms.updateAnswerRushScore);
   const initAnswerRushGame = useAnswerRushGameStore((store) => store.init);
   const updateGameState = useConvexMutation(api.games.updateGameState);
+  const finalizeGame = useConvexMutation(api.rooms.finalizeGame);
 
   // Subscribe to game state
   const { data: gameState } = useQuery(
@@ -52,13 +53,22 @@ const OnlineAnswerRushPlayPage = () => {
 
     const state = useAnswerRushGameStore.getState().state;
     if (state === "results" && gameState.phase === "playing") {
+      // First update the game state to finished
       updateGameState({
         roomId,
         phase: "finished",
         endTime: Date.now(),
       });
+      
+      // Then finalize the game to update player stats
+      if (gameState.currentGameId) {
+        finalizeGame({
+          roomId,
+          gameId: gameState.currentGameId
+        });
+      }
     }
-  }, [gameState, roomId, updateGameState]);
+  }, [gameState, roomId, updateGameState, finalizeGame]);
 
   return <AnswerRush CustomResults={AnswerRushResults} />;
 };

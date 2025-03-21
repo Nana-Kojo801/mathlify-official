@@ -258,6 +258,30 @@ export const updateAnswerRushScore = mutation({
         result.userId === userId ? { ...result, score } : result
       );
     }
+
+    // Sort results by score (highest first) and add ranks
+    let currentRank = 1;
+    let lastScore = -1;
+    
+    // Sort and calculate ranks
+    const resultsWithRanks = [...currentGame.results]
+      .sort((a, b) => b.score - a.score)
+      .map((result, index) => {
+        // Same score = same rank
+        if (index > 0 && result.score < lastScore) {
+          currentRank = index + 1;
+        }
+        lastScore = result.score;
+        
+        return {
+          ...result,
+          rank: currentRank
+        };
+      });
+    
+    // Update the results with ranks
+    currentGame.results = resultsWithRanks;
+
     await ctx.db.patch(roomId, {
       answerRushResults: room.answerRushResults.map((game) =>
         game.gameId === gameId ? currentGame : game
@@ -301,5 +325,68 @@ export const updateMember = mutation({
         member.userId === userId ? { ...member, ...patch } : member
       ),
     });
+  },
+});
+
+export const finalizeGame = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    gameId: v.string(),
+  },
+  handler: async (ctx, { roomId, gameId }) => {
+    const room = (await ctx.db.get(roomId))!;
+    const currentGame = room.answerRushResults.find(
+      (result) => result.gameId === gameId
+    );
+
+    if (!currentGame) {
+      throw new Error("Game not found");
+    }
+
+    // Sort results by score (highest first) and finalize ranks
+    let currentRank = 1;
+    let lastScore = -1;
+    
+    const finalResults = [...currentGame.results]
+      .sort((a, b) => b.score - a.score)
+      .map((result, index) => {
+        // Same score = same rank
+        if (index > 0 && result.score < lastScore) {
+          currentRank = index + 1;
+        }
+        lastScore = result.score;
+        
+        return {
+          ...result,
+          rank: currentRank
+        };
+      });
+    
+    // Update the results with final ranks
+    currentGame.results = finalResults;
+
+    // Update members' stats
+    const updatedMembers = room.members.map(member => {
+      const result = finalResults.find(r => r.userId === member.userId);
+      if (!result) return member;
+
+      return {
+        ...member,
+        gamesWon: result.rank === 1 ? member.gamesWon + 1 : member.gamesWon,
+        gamesLost: result.rank !== 1 ? member.gamesLost + 1 : member.gamesLost
+      };
+    });
+
+    // Update room stats
+    await ctx.db.patch(roomId, {
+      answerRushResults: room.answerRushResults.map((game) =>
+        game.gameId === gameId ? currentGame : game
+      ),
+      members: updatedMembers,
+      gamesPlayed: room.gamesPlayed + 1,
+      isActive: false
+    });
+
+    return finalResults;
   },
 });
