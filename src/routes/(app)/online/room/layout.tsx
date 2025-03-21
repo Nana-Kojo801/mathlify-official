@@ -1,6 +1,6 @@
 import PageLayout from "@/components/page-layout";
 import NavFooter from "./_components/nav-footer";
-import { Outlet, useNavigate, useParams } from "react-router";
+import { Outlet, useNavigate, useParams, useLocation } from "react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRoomQuery } from "./queries";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 const RoomLayout = () => {
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const initAnswerRushGame = useAnswerRushGameStore((store) => store.init);
   const { data: room } = useSuspenseQuery(
     getRoomQuery(params.roomId as Room["_id"])
@@ -24,9 +25,13 @@ const RoomLayout = () => {
   const updateGameState = useConvexMutation(api.games.updateGameState);
   const recoverGame = useConvexMutation(api.games.recoverGame);
   const deleteRoom = useConvexMutation(api.rooms.deleteRoom);
-  const setGameId = useConvexMutation(api.rooms.setGameId);
+  const initializeGameMutation = useConvexMutation(api.rooms.initializeGame);
   const user = useLiveUser();
   const [, setTick] = useState(0);
+  const [isGameStarting, setIsGameStarting] = useState(false);
+  
+  // Check if the current user is the room owner
+  const isRoomOwner = user?._id === room?.ownerId;
 
   // Subscribe to game state changes
   const { data: gameState } = useQuery(
@@ -64,83 +69,98 @@ const RoomLayout = () => {
   }, [gameState, room._id, user._id, updateGameState]);
 
   const startGame = useCallback(async () => {
+    if (!room || !isRoomOwner || !updateGameState) return;
+
+    setIsGameStarting(true);
+
     try {
+      // Generate a unique game ID
+      const gameId = crypto.randomUUID();
+      const startTime = Date.now() + 5000; // 5 seconds from now
+
+      // Update the game state to countdown phase
       await updateGameState({
         roomId: room._id,
         phase: "countdown",
-        startTime: Date.now() + 5000,
+        currentGameId: gameId,
+        startTime: startTime,
+        settings: room.gameSettings
       });
+      
+      toast.success("Game starting...");
     } catch (error) {
+      console.error("Failed to start game:", error);
       toast.error("Failed to start the game");
+      setIsGameStarting(false);
     }
-  }, [updateGameState, room._id]);
+  }, [room, isRoomOwner, updateGameState]);
 
-  // Handle game phase transitions
+  // Handle countdown to playing phase transition
   useEffect(() => {
-    if (!gameState) return;
+    if (!gameState || !room) return;
 
     const now = Date.now();
     const startTime = gameState.startTime;
-    const endTime = gameState.endTime;
 
-    switch (gameState.phase) {
-      case "countdown":
-        if (startTime && now >= startTime) {
-          if (room.gameSettings.type === "Answer Rush") {
-            initAnswerRushGame(room.gameSettings.answerRush);
-          }
-          
-          // Create a game ID
-          const newGameId = String(crypto.randomUUID());
-          
-          // First set the game ID
-          setGameId({
-            roomId: room._id,
-            gameId: newGameId,
-          });
-          
-          // Then update the game state to playing
-          updateGameState({
-            roomId: room._id,
-            phase: "playing",
-            currentGameId: newGameId,
-          });
-          
-          navigate(`/app/online/room/${room._id}/play`);
-        }
-        break;
-
-      case "playing":
-        // Ensure all users navigate to play page when game phase is "playing"
-        const currentPath = window.location.pathname;
-        const playPath = `/app/online/room/${room._id}/play`;
-        if (!currentPath.includes(playPath)) {
-          navigate(playPath);
-        }
-        
-        if (endTime && now >= endTime) {
-          updateGameState({
-            roomId: room._id,
-            phase: "finished",
-          });
-          navigate(`/app/online/room/${room._id}`);
-        }
-        break;
-
-      case "error":
-        toast.error(gameState.error?.message || "Game error occurred");
-        break;
+    if (gameState.phase === "countdown" && startTime && now >= startTime) {
+      if (room.gameSettings.type === "Answer Rush") {
+        initAnswerRushGame(room.gameSettings.answerRush);
+      }
+      
+      // Create a new game ID
+      const newGameId = String(crypto.randomUUID());
+      
+      // Initialize the game in database
+      initializeGameMutation({
+        roomId: room._id,
+        gameId: newGameId,
+      });
+      
+      // Update game state to playing
+      updateGameState({
+        roomId: room._id,
+        phase: "playing",
+        currentGameId: newGameId,
+      });
+      
+      // Navigate to the play page
+      navigate(`/app/online/room/${room._id}/play`);
     }
-  }, [gameState, room._id, room.gameSettings, initAnswerRushGame, updateGameState, navigate, setGameId]);
+  }, [gameState, room, updateGameState, initAnswerRushGame, initializeGameMutation, navigate]);
+
+  // When game state changes to playing phase, we navigate to the play route
+  useEffect(() => {
+    if (!room) return;
+
+    const playPath = `/app/online/room/${room._id}/play`;
+
+    if (gameState?.phase === "playing" && location.pathname !== playPath) {
+      console.log("Navigating to play route");
+      navigate(playPath);
+    } else if (gameState?.phase === "finished" && location.pathname === playPath) {
+      console.log("Game finished, returning to room");
+      // Give some time for the results component to display before navigating
+      const timer = setTimeout(() => {
+        navigate(`/app/online/room/${room._id}`);
+      }, 6000); // Slightly longer than the results component's timer
+      
+      return () => clearTimeout(timer);
+    } else if (gameState?.phase === "error") {
+      console.error("Game error:", gameState.error);
+      toast.error(gameState.error?.message || "An unknown error occurred");
+      navigate(`/app/online/room/${room._id}`);
+    }
+  }, [gameState?.phase, room, navigate, location.pathname, gameState?.error]);
 
   // Handle room owner leaving
   useEffect(() => {
-    if (!room.members.find((member) => member.userId === room.ownerId)) {
+    const owner = room.members?.find((member) => member?.userId === room.ownerId);
+    if (!owner) {
       deleteRoom({ roomId: room._id });
       navigate("/app/online");
       toast("Room owner left the group");
     }
-  }, [room.members, deleteRoom, navigate, room._id, room.ownerId]);
+  }, [room.members, room.ownerId, deleteRoom, navigate, room._id]);
 
   // Calculate countdown
   const countdown = gameState?.phase === "countdown" && gameState.startTime
@@ -204,7 +224,7 @@ const RoomLayout = () => {
             transition={{ duration: 0.3 }}
             className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg"
           >
-            {gameState.error?.message}
+            {gameState.error?.message || "Recovering game..."}
           </motion.div>
         )}
       </AnimatePresence>

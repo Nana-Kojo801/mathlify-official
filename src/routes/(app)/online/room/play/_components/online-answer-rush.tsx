@@ -1,76 +1,110 @@
-import AnswerRush from "@/components/answer-rush/answer-rush";
-import { useLiveUser } from "@/lib/hooks/useLiveUser";
-import { useAnswerRushGameStore } from "@/lib/stores/answer-rush-store";
-import { useConvexMutation } from "@convex-dev/react-query";
-import { api } from "@convex/_generated/api";
 import { useEffect } from "react";
 import { useOutletContext } from "react-router";
-import { OutletContext } from "../../_types";
+import { api } from "@convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
+import AnswerRush from "@/components/answer-rush/answer-rush";
 import AnswerRushResults from "./answer-rush-results";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
+import { useAnswerRushGameStore } from "@/lib/stores/answer-rush-store";
+import type { OutletContext } from "../../_types";
+import { useLiveUser } from "@/lib/hooks/useLiveUser";
 
+/**
+ * The online version of the Answer Rush game component
+ * Handles score updates, game initialization, and game state transitions
+ */
 const OnlineAnswerRushPlayPage = () => {
+  // Get context and auth
+  const { room, roomId } = useOutletContext<OutletContext>();
   const user = useLiveUser();
-  const { roomId, room } = useOutletContext<OutletContext>();
+  
+  // Local game state
+  const state = useAnswerRushGameStore((store) => store.state);
   const setState = useAnswerRushGameStore((store) => store.setState);
   const score = useAnswerRushGameStore((store) => store.score);
-  const updateScore = useConvexMutation(api.rooms.updateAnswerRushScore);
   const initAnswerRushGame = useAnswerRushGameStore((store) => store.init);
-  const updateGameState = useConvexMutation(api.games.updateGameState);
-  const finalizeGame = useConvexMutation(api.rooms.finalizeGame);
 
-  // Subscribe to game state
-  const { data: gameState } = useQuery(
-    convexQuery(api.games.getGameState, {
-      roomId,
-    })
-  );
+  // Server mutations
+  const updateScore = useMutation(api.rooms.updateScore);
+  const updateGameState = useMutation(api.games.updateGameState);
+  const finalizeGame = useMutation(api.rooms.finalizeGame);
+
+  // Get game state from server
+  const gameState = useQuery(api.games.getGameState, { 
+    roomId 
+  });
 
   // Initialize game when entering play page
   useEffect(() => {
-    if (gameState?.phase === "playing") {
-      initAnswerRushGame(room.gameSettings.answerRush);
-      setState("countdown");
-    }
-  }, [gameState?.phase, room.gameSettings.answerRush, initAnswerRushGame, setState]);
+    if (!gameState || !room?.gameSettings?.answerRush) return;
 
-  // Update score
-  useEffect(() => {
-    if (!gameState?.currentGameId) return;
-    updateScore({ 
-      score, 
-      roomId, 
-      userId: user._id, 
-      gameId: gameState.currentGameId 
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [score]);
-
-  // Handle game state transitions
-  useEffect(() => {
-    if (!gameState) return;
-
-    const state = useAnswerRushGameStore.getState().state;
-    if (state === "results" && gameState.phase === "playing") {
-      // First update the game state to finished
-      updateGameState({
-        roomId,
-        phase: "finished",
-        endTime: Date.now(),
-      });
-      
-      // Then finalize the game to update player stats
-      if (gameState.currentGameId) {
-        finalizeGame({
-          roomId,
-          gameId: gameState.currentGameId
-        });
+    // Only initialize if we're in the playing phase and it's an Answer Rush game
+    if (gameState.phase === "playing" && room.gameSettings.type === "Answer Rush") {
+      // Initialize local state to countdown if not already playing
+      if (state === "idle") {
+        console.log("Initializing Answer Rush game");
+        // Initialize with the game settings
+        initAnswerRushGame(room.gameSettings.answerRush);
+        setState("countdown");
       }
     }
-  }, [gameState, roomId, updateGameState, finalizeGame]);
+  }, [gameState, room, state, setState, initAnswerRushGame]);
 
-  return <AnswerRush CustomResults={AnswerRushResults} />;
+  // Update score on server when local score changes
+  useEffect(() => {
+    if (!user?._id || !gameState?.currentGameId || score === 0) return;
+
+    const updateServerScore = async () => {
+      try {
+        await updateScore({
+          roomId,
+          gameId: gameState.currentGameId!,
+          userId: user._id,
+          score,
+        });
+      } catch (error) {
+        console.error("Failed to update score:", error);
+      }
+    };
+
+    updateServerScore();
+  }, [score, roomId, gameState?.currentGameId, user?._id, updateScore]);
+
+  // Handle game end
+  useEffect(() => {
+    if (!gameState || !user?._id) return;
+
+    // When local game ends, update server game state
+    if (state === "results" && gameState.phase === "playing") {
+      const finishGame = async () => {
+        try {
+          // Update game state to finished
+          await updateGameState({
+            roomId,
+            phase: "finished",
+            endTime: Date.now()
+          });
+
+          // Finalize game (update player stats)
+          if (gameState.currentGameId) {
+            await finalizeGame({
+              roomId,
+              gameId: gameState.currentGameId,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to finalize game:", error);
+        }
+      };
+
+      finishGame();
+    }
+  }, [state, gameState, roomId, user?._id, updateGameState, finalizeGame]);
+
+  return (
+    <AnswerRush
+      CustomResults={AnswerRushResults}
+    />
+  );
 };
 
 export default OnlineAnswerRushPlayPage;

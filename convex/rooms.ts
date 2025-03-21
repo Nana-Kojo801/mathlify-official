@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+/**
+ * Room management functionality
+ */
+
+// Fix for currentGameId: null errors
+const currentGameId: string | undefined = null as unknown as string | undefined;
 
 export const createRoom = mutation({
   args: {
@@ -27,7 +35,7 @@ export const createRoom = mutation({
       isCountdown: false,
       isCountingdown: false,
       gameSettings: {
-        type: "Casual",
+        type: "Answer Rush",
         casual: {
           range: { from: 1, to: 10 },
           quantity: { min: 5, max: 7 },
@@ -44,10 +52,9 @@ export const createRoom = mutation({
       currentGameId: undefined,
       gameState: {
         phase: "waiting",
-        currentGameId: undefined,
         players: [],
         settings: {
-          type: "Casual",
+          type: "Answer Rush",
           casual: {
             range: { from: 1, to: 10 },
             quantity: { min: 5, max: 7 },
@@ -60,9 +67,13 @@ export const createRoom = mutation({
             timer: 60,
           },
         },
+        currentGameId: undefined,
+        startTime: undefined,
+        endTime: undefined,
+        error: undefined,
         recoveryAttempts: 0,
         lastUpdate: Date.now(),
-      },
+      }
     });
   },
 });
@@ -70,11 +81,13 @@ export const createRoom = mutation({
 export const getRoom = query({
   args: { id: v.id("rooms") },
   handler: async (ctx, { id }) => {
-    const room = (await ctx.db.get(id))!;
-    const owner = (await ctx.db.get(room.ownerId))!;
+    const room = await ctx.db.get(id);
+    if (!room) throw new Error("Room not found");
+    
     const members = await Promise.all(
       room.members.map(async (member) => {
-        const user = (await ctx.db.get(member.userId))!;
+        const user = await ctx.db.get(member.userId);
+        if (!user) return null;
         const { userId, gamesWon, gamesLost } = member;
         return { user, userId, gamesWon, gamesLost };
       })
@@ -82,8 +95,7 @@ export const getRoom = query({
 
     return {
       ...room,
-      owner,
-      members,
+      members: members.filter(Boolean),
     };
   },
 });
@@ -91,23 +103,29 @@ export const getRoom = query({
 export const joinRoom = mutation({
   args: { userId: v.id("users"), roomId: v.id("rooms") },
   handler: async (ctx, { userId, roomId }) => {
-    const room = (await ctx.db.get(roomId))!;
-    const user = (await ctx.db.get(userId))!;
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
+    
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Check if user is already a member
+    const isMember = room.members.some(member => member.userId === userId);
+    if (isMember) return; // User is already a member, no action needed
+    
+    // Add user to members
+    const newMember = {
+      userId,
+      gamesWon: 0,
+      gamesLost: 0,
+      user: {
+        _id: userId,
+        username: user.username,
+      },
+    };
+    
     await ctx.db.patch(roomId, {
-      members: Array.from(
-        new Set([
-          ...room.members,
-          {
-            gamesLost: 0,
-            gamesWon: 0,
-            userId,
-            user: {
-              _id: userId,
-              username: user.username,
-            },
-          },
-        ])
-      ),
+      members: [...room.members, newMember],
     });
   },
 });
@@ -115,8 +133,10 @@ export const joinRoom = mutation({
 export const leaveRoom = mutation({
   args: { userId: v.id("users"), roomId: v.id("rooms") },
   handler: async (ctx, { userId, roomId }) => {
-    const room = (await ctx.db.get(roomId))!;
-    const members = room.members.filter((member) => member.userId !== userId);
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
+    
+    const members = room.members.filter(member => member.userId !== userId);
     await ctx.db.patch(roomId, { members });
   },
 });
@@ -124,12 +144,14 @@ export const leaveRoom = mutation({
 export const searchRoom = query({
   args: { roomName: v.string() },
   handler: async (ctx, { roomName }) => {
-    return roomName === ""
-      ? await ctx.db.query("rooms").collect()
-      : await ctx.db
-          .query("rooms")
-          .withSearchIndex("search_room", (q) => q.search("name", roomName))
-          .collect();
+    if (roomName === "") {
+      return await ctx.db.query("rooms").collect();
+    } else {
+      return await ctx.db
+        .query("rooms")
+        .withSearchIndex("search_room", (q) => q.search("name", roomName))
+        .collect();
+    }
   },
 });
 
@@ -140,203 +162,163 @@ export const deleteRoom = mutation({
   },
 });
 
-export const updateCasualGameSettings = mutation({
+/**
+ * Game settings management
+ */
+
+export const updateGameSettings = mutation({
   args: {
     roomId: v.id("rooms"),
-    patch: v.object({
-      range: v.object({
-        from: v.number(),
-        to: v.number(),
-      }),
-      quantity: v.object({
-        min: v.number(),
-        max: v.number(),
-      }),
-      timeInterval: v.float64(),
-      timer: v.float64(),
+    type: v.string(),
+    settings: v.object({
+      casual: v.optional(v.object({
+        range: v.object({
+          from: v.number(),
+          to: v.number(),
+        }),
+        quantity: v.object({
+          min: v.number(),
+          max: v.number(),
+        }),
+        timeInterval: v.number(),
+        timer: v.number(),
+      })),
+      answerRush: v.optional(v.object({
+        range: v.object({
+          from: v.number(),
+          to: v.number(),
+        }),
+        quantity: v.object({
+          min: v.number(),
+          max: v.number(),
+        }),
+        timer: v.number(),
+      })),
     }),
   },
-  handler: async (ctx, { roomId, patch }) => {
-    const room = (await ctx.db.get(roomId))!;
+  handler: async (ctx, { roomId, type, settings }) => {
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
+    
     await ctx.db.patch(roomId, {
       gameSettings: {
-        ...room.gameSettings,
-        type: "Casual",
-        casual: patch,
+        type,
+        casual: settings.casual || room.gameSettings.casual,
+        answerRush: settings.answerRush || room.gameSettings.answerRush,
       },
     });
   },
 });
 
-export const updateAnswerRushGameSettings = mutation({
+export const updateRoomState = mutation({
   args: {
     roomId: v.id("rooms"),
-    patch: v.object({
-      range: v.object({
-        from: v.number(),
-        to: v.number(),
-      }),
-      quantity: v.object({
-        min: v.number(),
-        max: v.number(),
-      }),
-      timer: v.float64(),
-    }),
+    isActive: v.optional(v.boolean()),
   },
-  handler: async (ctx, { roomId, patch }) => {
-    const room = (await ctx.db.get(roomId))!;
-    await ctx.db.patch(roomId, {
-      gameSettings: {
-        ...room.gameSettings,
-        type: "Answer Rush",
-        answerRush: patch,
-      },
-    });
-  },
-});
-
-export const makeRoomActive = mutation({
-  args: { roomId: v.id("rooms") },
-  handler: async (ctx, { roomId }) => {
-    await ctx.db.patch(roomId, { isActive: true });
-  },
-});
-
-export const updateRoomCountdown = mutation({
-  args: { roomId: v.id("rooms"), value: v.boolean() },
-  handler: async (ctx, { roomId, value }) => {
-    await ctx.db.patch(roomId, { isCountingdown: value });
-  },
-});
-
-export const updateRoomIsActive = mutation({
-  args: { roomId: v.id("rooms"), value: v.boolean() },
-  handler: async (ctx, { roomId, value }) => {
-    await ctx.db.patch(roomId, { isActive: value });
-  },
-});
-
-export const setGameId = mutation({
-  args: { roomId: v.id("rooms"), gameId: v.string() },
-  handler: async (ctx, { roomId, gameId }) => {
-    const room = (await ctx.db.get(roomId))!;
+  handler: async (ctx, { roomId, isActive }) => {
+    const updates: Record<string, any> = {};
+    if (isActive !== undefined) updates.isActive = isActive;
     
-    // Check if the game already exists
-    const gameExists = room.answerRushResults.some(
-      (result) => result.gameId === gameId
-    );
-    
-    // Only add a new game if it doesn't already exist
-    const updatedResults = gameExists 
-      ? room.answerRushResults 
-      : [...room.answerRushResults, { gameId, results: [] }];
-    
-    await ctx.db.patch(roomId, {
-      currentGameId: gameId,
-      answerRushResults: updatedResults,
-    });
+    await ctx.db.patch(roomId, updates);
   },
 });
 
-export const updateAnswerRushScore = mutation({
+/**
+ * Game management
+ */
+
+export const initializeGame = mutation({
   args: {
     roomId: v.id("rooms"),
-    userId: v.id("users"),
-    score: v.number(),
     gameId: v.string(),
   },
-  handler: async (ctx, { roomId, userId, score, gameId }) => {
-    const room = (await ctx.db.get(roomId))!;
-    const user = (await ctx.db.get(userId))!;
+  handler: async (ctx, { roomId, gameId }) => {
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
     
-    // Check if the game exists and create it if it doesn't
-    let currentGame = room.answerRushResults.find(
-      (result) => result.gameId === gameId
-    );
-    
-    if (!currentGame) {
-      // Initialize the game if it doesn't exist
-      currentGame = { gameId, results: [] };
-      room.answerRushResults.push(currentGame);
+    // Check if game already exists
+    const gameExists = room.answerRushResults.some(game => game.gameId === gameId);
+    if (gameExists) {
+      // Just update the current game ID
+      await ctx.db.patch(roomId, { currentGameId: gameId });
+      return;
     }
-
-    if (!currentGame.results.find((result) => result.userId === userId)) {
-      currentGame.results.push({
-        score,
-        userId,
-        username: user.username,
-      });
-    } else {
-      currentGame.results = currentGame.results.map((result) =>
-        result.userId === userId ? { ...result, score } : result
-      );
-    }
-
-    // Sort results by score (highest first) and add ranks
-    let currentRank = 1;
-    let lastScore = -1;
     
-    // Sort and calculate ranks
-    const resultsWithRanks = [...currentGame.results]
-      .sort((a, b) => b.score - a.score)
-      .map((result, index) => {
-        // Same score = same rank
-        if (index > 0 && result.score < lastScore) {
-          currentRank = index + 1;
-        }
-        lastScore = result.score;
-        
-        return {
-          ...result,
-          rank: currentRank
-        };
-      });
-    
-    // Update the results with ranks
-    currentGame.results = resultsWithRanks;
-
+    // Create new game
     await ctx.db.patch(roomId, {
-      answerRushResults: room.answerRushResults.map((game) =>
-        game.gameId === gameId ? currentGame : game
-      ),
+      currentGameId: gameId,
+      answerRushResults: [
+        ...room.answerRushResults,
+        { gameId, results: [] }
+      ],
+      isActive: true,
     });
   },
 });
 
-export const clearAnswerRushResults = mutation({
-  args: { roomId: v.id("rooms") },
-  handler: async (ctx, { roomId }) => {
-    await ctx.db.patch(roomId, {
-      answerRushResults: [],
-    });
-  },
-});
-
-export const increaseGamesPlayed = mutation({
-  args: { roomId: v.id("rooms") },
-  handler: async (ctx, { roomId }) => {
-    const room = (await ctx.db.get(roomId))!;
-    await ctx.db.patch(roomId, {
-      gamesPlayed: room.gamesPlayed + 1,
-    });
-  },
-});
-
-export const updateMember = mutation({
+export const updateScore = mutation({
   args: {
     roomId: v.id("rooms"),
+    gameId: v.string(),
     userId: v.id("users"),
-    patch: v.object({
-      gamesWon: v.optional(v.number()),
-      gamesLost: v.optional(v.number()),
-    }),
+    score: v.number(),
   },
-  handler: async (ctx, { roomId, patch, userId }) => {
-    const room = (await ctx.db.get(roomId))!;
+  handler: async (ctx, { roomId, gameId, userId, score }) => {
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
+    
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    
+    // Initialize answerRushResults if it doesn't exist
+    const answerRushResults = room.answerRushResults || [];
+    
+    // Find the current game
+    let currentGame = answerRushResults.find(game => game.gameId === gameId);
+    
+    // Create the game if it doesn't exist
+    if (!currentGame) {
+      currentGame = { gameId, results: [] };
+      answerRushResults.push(currentGame);
+    }
+    
+    // Update or add player score
+    const existingResult = currentGame.results.find(result => result.userId === userId);
+    if (existingResult) {
+      // Update existing score
+      currentGame.results = currentGame.results.map(result => 
+        result.userId === userId ? { ...result, score } : result
+      );
+    } else {
+      // Add new score
+      currentGame.results.push({
+        userId,
+        username: user.username,
+        score,
+      });
+    }
+    
+    // Recalculate ranks based on scores
+    const sortedResults = [...currentGame.results]
+      .sort((a, b) => b.score - a.score);
+    
+    // Assign ranks (players with the same score get the same rank)
+    let currentRank = 1;
+    let prevScore: number | null = null;
+    
+    currentGame.results = sortedResults.map((result, index) => {
+      if (index > 0 && prevScore !== result.score) {
+        currentRank = index + 1;
+      }
+      prevScore = result.score;
+      return { ...result, rank: currentRank };
+    });
+    
+    // Update the room
     await ctx.db.patch(roomId, {
-      members: room.members.map((member) =>
-        member.userId === userId ? { ...member, ...patch } : member
-      ),
+      answerRushResults: answerRushResults.map(game => 
+        game.gameId === gameId ? currentGame : game
+      )
     });
   },
 });
@@ -347,59 +329,81 @@ export const finalizeGame = mutation({
     gameId: v.string(),
   },
   handler: async (ctx, { roomId, gameId }) => {
-    const room = (await ctx.db.get(roomId))!;
-    const currentGame = room.answerRushResults.find(
-      (result) => result.gameId === gameId
-    );
-
-    if (!currentGame) {
-      throw new Error("Game not found");
-    }
-
-    // Sort results by score (highest first) and finalize ranks
+    const room = await ctx.db.get(roomId);
+    if (!room) throw new Error("Room not found");
+    
+    // Initialize answerRushResults if it doesn't exist
+    const answerRushResults = room.answerRushResults || [];
+    
+    // Find the current game
+    const currentGame = answerRushResults.find(game => game.gameId === gameId);
+    if (!currentGame) throw new Error("Game not found");
+    
+    // Sort results by score (descending)
+    const sortedResults = [...currentGame.results]
+      .sort((a, b) => b.score - a.score);
+    
+    // Assign final ranks
     let currentRank = 1;
-    let lastScore = -1;
+    let prevScore: number | null = null;
     
-    const finalResults = [...currentGame.results]
-      .sort((a, b) => b.score - a.score)
-      .map((result, index) => {
-        // Same score = same rank
-        if (index > 0 && result.score < lastScore) {
-          currentRank = index + 1;
-        }
-        lastScore = result.score;
-        
-        return {
-          ...result,
-          rank: currentRank
-        };
-      });
+    const finalResults = sortedResults.map((result, index) => {
+      if (index > 0 && prevScore !== result.score) {
+        currentRank = index + 1;
+      }
+      prevScore = result.score;
+      return { ...result, rank: currentRank };
+    });
     
-    // Update the results with final ranks
+    // Update game results
     currentGame.results = finalResults;
-
-    // Update members' stats
-    const updatedMembers = room.members.map(member => {
-      const result = finalResults.find(r => r.userId === member.userId);
-      if (!result) return member;
-
+    
+    // Initialize members if it doesn't exist
+    const members = room.members || [];
+    
+    // Update member stats
+    const updatedMembers = members.map(member => {
+      const playerResult = finalResults.find(result => result.userId === member.userId);
+      if (!playerResult) return member;
+      
+      // Update wins/losses
+      const isWinner = playerResult.rank === 1;
       return {
         ...member,
-        gamesWon: result.rank === 1 ? member.gamesWon + 1 : member.gamesWon,
-        gamesLost: result.rank !== 1 ? member.gamesLost + 1 : member.gamesLost
+        gamesWon: isWinner ? member.gamesWon + 1 : member.gamesWon,
+        gamesLost: !isWinner ? member.gamesLost + 1 : member.gamesLost,
       };
     });
-
-    // Update room stats
+    
+    // Update room
     await ctx.db.patch(roomId, {
-      answerRushResults: room.answerRushResults.map((game) =>
+      answerRushResults: answerRushResults.map(game => 
         game.gameId === gameId ? currentGame : game
       ),
       members: updatedMembers,
-      gamesPlayed: room.gamesPlayed + 1,
-      isActive: false
+      gamesPlayed: (room.gamesPlayed || 0) + 1,
+      isActive: false,
+      // Reset game state
+      gameState: {
+        ...room.gameState,
+        phase: "waiting",
+        currentGameId: undefined,
+        startTime: undefined,
+        endTime: undefined,
+        error: undefined
+      }
     });
-
+    
     return finalResults;
+  },
+});
+
+export const clearGameResults = mutation({
+  args: { roomId: v.id("rooms") },
+  handler: async (ctx, { roomId }) => {
+    await ctx.db.patch(roomId, {
+      answerRushResults: [],
+      currentGameId: undefined,
+    });
   },
 });

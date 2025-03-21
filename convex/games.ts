@@ -59,6 +59,32 @@ export const updateGameState = mutation({
       lastSeen: v.number(),
       isReady: v.optional(v.boolean()),
       score: v.optional(v.number())
+    })),
+    settings: v.optional(v.object({
+      type: v.string(),
+      casual: v.object({
+        range: v.object({
+          from: v.number(),
+          to: v.number(),
+        }),
+        quantity: v.object({
+          min: v.number(),
+          max: v.number(),
+        }),
+        timeInterval: v.number(),
+        timer: v.number(),
+      }),
+      answerRush: v.object({
+        range: v.object({
+          from: v.number(),
+          to: v.number(),
+        }),
+        quantity: v.object({
+          min: v.number(),
+          max: v.number(),
+        }),
+        timer: v.number(),
+      }),
     }))
   },
   handler: async (ctx, args) => {
@@ -100,6 +126,15 @@ export const updateGameState = mutation({
       }
     }
 
+    // When moving to countdown phase, initialize game if settings are provided
+    if (args.phase === "countdown" && args.settings) {
+      // Initialize a new game with the provided settings
+      await ctx.db.patch(args.roomId, {
+        isActive: true,
+        isCountdown: true
+      });
+    }
+
     const updatedGameState: GameState = {
       ...currentGameState,
       phase: (args.phase ?? currentGameState.phase) as GamePhase,
@@ -108,6 +143,8 @@ export const updateGameState = mutation({
       endTime: args.endTime ?? currentGameState.endTime,
       error: args.error ?? currentGameState.error,
       players: updatedPlayers,
+      // Update settings if provided
+      settings: args.settings ?? currentGameState.settings,
       recoveryAttempts,
       lastUpdate: Date.now()
     };

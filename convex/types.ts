@@ -1,5 +1,9 @@
 import { Id } from "./_generated/dataModel";
 
+/**
+ * Core game state types
+ */
+
 export type GamePhase = "waiting" | "countdown" | "playing" | "finished" | "error" | "recovering";
 
 export interface GameState {
@@ -38,11 +42,15 @@ export interface GameState {
   lastUpdate: number;
 }
 
+/**
+ * Room and user types
+ */
+
 export interface Room {
   _id: Id<"rooms">;
   _creationTime: number;
   ownerId: Id<"users">;
-  owner: {
+  owner?: {
     _id: Id<"users">;
     username: string;
   };
@@ -50,25 +58,15 @@ export interface Room {
   memberCount: number;
   gamesPlayed: number;
   isPublic: boolean;
-  isCountdown: boolean;
   isActive: boolean;
-  answerRushResults: {
-    gameId: string;
-    results: {
-      userId: Id<"users">;
-      username: string;
-      score: number;
-    }[];
-  }[];
-  currentGameId: string;
   members: {
-    user: {
+    userId: Id<"users">;
+    gamesWon: number;
+    gamesLost: number;
+    user?: {
       _id: Id<"users">;
       username: string;
     };
-    userId: Id<"users">;
-    gamesLost: number;
-    gamesWon: number;
   }[];
   gameSettings: {
     type: string;
@@ -84,5 +82,30 @@ export interface Room {
       timer: number;
     };
   };
+  answerRushResults: {
+    gameId: string;
+    results: {
+      userId: Id<"users">;
+      username: string;
+      score: number;
+      rank?: number;
+    }[];
+  }[];
+  currentGameId?: string;
   gameState: GameState;
+}
+
+export interface GameSettings {
+  type: string;
+  casual: {
+    range: { from: number; to: number };
+    quantity: { min: number; max: number };
+    timeInterval: number;
+    timer: number;
+  };
+  answerRush: {
+    range: { from: number; to: number };
+    quantity: { min: number; max: number };
+    timer: number;
+  };
 } 

@@ -6,50 +6,68 @@ import { OutletContext } from "../../_types";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
-import { useConvexMutation } from "@convex-dev/react-query";
-import { api } from "@convex/_generated/api";
 import { useEffect, useMemo } from "react";
+import { api } from "@convex/_generated/api";
 
+/**
+ * Results component for the Answer Rush online game
+ * Shows the leaderboard and final scores
+ */
 const AnswerRushResults = () => {
   const navigate = useNavigate();
   const { roomId } = useOutletContext<OutletContext>();
   const user = useLiveUser();
-  const updateUser = useConvexMutation(api.users.updateUser);
 
-  // Subscribe to game state and room data for results
-  const { data: gameState } = useQuery(
-    convexQuery(api.games.getGameState, {
-      roomId,
-    })
-  );
-  
+  // Get room data (which contains game results)
   const { data: room } = useQuery(
     convexQuery(api.rooms.getRoom, {
       id: roomId,
     })
   );
 
-  // Get current game results from room data
-  const currentGame = room?.answerRushResults?.find(
-    (game) => game.gameId === gameState?.currentGameId
+  // Get game state
+  const { data: gameState } = useQuery(
+    convexQuery(api.games.getGameState, {
+      roomId,
+    })
   );
+
+  // Find the current game results
+  const currentGame = useMemo(() => {
+    if (!room?.answerRushResults || !gameState?.currentGameId) return null;
+    
+    // Find the game with matching ID
+    const game = room.answerRushResults.find(
+      (game) => game.gameId === gameState.currentGameId
+    );
+    
+    if (!game) return null;
+    
+    // Make sure the results have at least one item
+    return game.results.length > 0 ? game : null;
+  }, [room?.answerRushResults, gameState?.currentGameId]);
 
   // Sort results and calculate ranks
   const sortedResults = useMemo(() => {
-    if (!currentGame?.results) return [];
+    if (!currentGame?.results?.length) return [];
     
     // Sort by score (highest first)
     const sorted = [...currentGame.results].sort((a, b) => b.score - a.score);
     
-    // Add rank
+    // If results already have ranks, return them
+    if (sorted[0].rank !== undefined) {
+      return sorted;
+    }
+    
+    // Otherwise, calculate ranks
     let currentRank = 1;
-    let lastScore = sorted[0]?.score ?? 0;
+    let prevScore = sorted[0].score;
     
     return sorted.map((result, index) => {
       // Same score = same rank
-      if (index > 0 && result.score < lastScore) {
+      if (index > 0 && result.score < prevScore) {
         currentRank = index + 1;
-        lastScore = result.score;
+        prevScore = result.score;
       }
       
       return {
@@ -57,29 +75,9 @@ const AnswerRushResults = () => {
         rank: currentRank
       };
     });
-  }, [currentGame]);
+  }, [currentGame?.results]);
 
-  // Update user stats when game ends
-  useEffect(() => {
-    if (!sortedResults.length || !user) return;
-
-    const userResult = sortedResults.find(
-      (result) => result.userId === user._id
-    );
-    if (!userResult) return;
-
-    const isWinner = userResult.rank === 1;
-    // Update only valid fields for the user
-    updateUser({
-      id: user._id,
-      // Store wins/losses in the elo object
-      elo: {
-        ...user.elo,
-        answerRush: user.elo?.answerRush + (isWinner ? 10 : -5)
-      }
-    });
-  }, [sortedResults, user, updateUser]);
-
+  // Get icon for player rank
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
@@ -93,11 +91,26 @@ const AnswerRushResults = () => {
     }
   };
 
-  if (!currentGame) return <div>Loading results...</div>;
+  // Navigate back to room when finished
+  useEffect(() => {
+    if (gameState?.phase === "finished") {
+      const timer = setTimeout(() => {
+        navigate(`/app/online/room/${roomId}`);
+      }, 5000); // Automatically return to room after 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [gameState?.phase, navigate, roomId]);
+
+  // If no results yet, show loading
+  if (!sortedResults.length) {
+    return <div className="flex justify-center items-center h-full">Loading results...</div>;
+  }
 
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <h2 className="text-2xl font-bold">Game Results</h2>
+      
       <div className="w-full max-w-md space-y-4">
         {sortedResults.map((result) => (
           <div
@@ -114,6 +127,7 @@ const AnswerRushResults = () => {
           </div>
         ))}
       </div>
+      
       <Button
         onClick={() => navigate(`/app/online/room/${roomId}`)}
         className="mt-4"
