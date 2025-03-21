@@ -1,13 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { GameState, GamePhase } from "./types";
 
 /**
  * Room management functionality
  */
-
-// Fix for currentGameId: null errors
-const currentGameId: string | undefined = null as unknown as string | undefined;
 
 export const createRoom = mutation({
   args: {
@@ -169,9 +167,9 @@ export const deleteRoom = mutation({
 export const updateGameSettings = mutation({
   args: {
     roomId: v.id("rooms"),
-    type: v.string(),
-    settings: v.object({
-      casual: v.optional(v.object({
+    gameSettings: v.object({
+      type: v.string(),
+      casual: v.object({
         range: v.object({
           from: v.number(),
           to: v.number(),
@@ -182,8 +180,8 @@ export const updateGameSettings = mutation({
         }),
         timeInterval: v.number(),
         timer: v.number(),
-      })),
-      answerRush: v.optional(v.object({
+      }),
+      answerRush: v.object({
         range: v.object({
           from: v.number(),
           to: v.number(),
@@ -193,19 +191,72 @@ export const updateGameSettings = mutation({
           max: v.number(),
         }),
         timer: v.number(),
-      })),
+      }),
     }),
   },
-  handler: async (ctx, { roomId, type, settings }) => {
-    const room = await ctx.db.get(roomId);
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
-    
-    await ctx.db.patch(roomId, {
-      gameSettings: {
-        type,
-        casual: settings.casual || room.gameSettings.casual,
-        answerRush: settings.answerRush || room.gameSettings.answerRush,
-      },
+
+    await ctx.db.patch(args.roomId, {
+      gameSettings: args.gameSettings,
+    });
+  },
+});
+
+export const updateAnswerRushGameSettings = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    settings: v.object({
+      range: v.object({
+        from: v.number(),
+        to: v.number(),
+      }),
+      quantity: v.object({
+        min: v.number(),
+        max: v.number(),
+      }),
+      timer: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Room not found");
+
+    const gameSettings = { ...room.gameSettings };
+    gameSettings.answerRush = args.settings;
+
+    await ctx.db.patch(args.roomId, {
+      gameSettings,
+    });
+  },
+});
+
+export const updateCasualGameSettings = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    settings: v.object({
+      range: v.object({
+        from: v.number(),
+        to: v.number(),
+      }),
+      quantity: v.object({
+        min: v.number(),
+        max: v.number(),
+      }),
+      timeInterval: v.number(),
+      timer: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Room not found");
+
+    const gameSettings = { ...room.gameSettings };
+    gameSettings.casual = args.settings;
+
+    await ctx.db.patch(args.roomId, {
+      gameSettings,
     });
   },
 });

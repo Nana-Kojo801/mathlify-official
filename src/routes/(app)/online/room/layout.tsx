@@ -125,8 +125,11 @@ const RoomLayout = () => {
       
       // Navigate to the play page
       navigate(`/app/online/room/${room._id}/play`);
+      
+      // Reset the game starting state
+      setIsGameStarting(false);
     }
-  }, [gameState, room, updateGameState, initAnswerRushGame, initializeGameMutation, navigate]);
+  }, [gameState, room, updateGameState, initAnswerRushGame, initializeGameMutation, navigate, setIsGameStarting]);
 
   // When game state changes to playing phase, we navigate to the play route
   useEffect(() => {

@@ -9,6 +9,14 @@ import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { useEffect, useMemo } from "react";
 import { api } from "@convex/_generated/api";
 
+// Define a type for game results to include the rank property
+type GameResult = {
+  userId: string;
+  username: string;
+  score: number;
+  rank?: number;
+};
+
 /**
  * Results component for the Answer Rush online game
  * Shows the leaderboard and final scores
@@ -48,15 +56,15 @@ const AnswerRushResults = () => {
   }, [room?.answerRushResults, gameState?.currentGameId]);
 
   // Sort results and calculate ranks
-  const sortedResults = useMemo(() => {
+  const sortedResults = useMemo<GameResult[]>(() => {
     if (!currentGame?.results?.length) return [];
     
     // Sort by score (highest first)
     const sorted = [...currentGame.results].sort((a, b) => b.score - a.score);
     
     // If results already have ranks, return them
-    if (sorted[0].rank !== undefined) {
-      return sorted;
+    if ('rank' in sorted[0]) {
+      return sorted as GameResult[];
     }
     
     // Otherwise, calculate ranks
@@ -73,12 +81,14 @@ const AnswerRushResults = () => {
       return {
         ...result,
         rank: currentRank
-      };
+      } as GameResult;
     });
   }, [currentGame?.results]);
 
   // Get icon for player rank
-  const getRankIcon = (rank: number) => {
+  const getRankIcon = (rank?: number) => {
+    if (rank === undefined) return null;
+    
     switch (rank) {
       case 1:
         return <Trophy className="w-6 h-6 text-yellow-500" />;
