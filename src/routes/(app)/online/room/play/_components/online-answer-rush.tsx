@@ -12,10 +12,12 @@ import { convexQuery } from "@convex-dev/react-query";
 
 const OnlineAnswerRushPlayPage = () => {
   const user = useLiveUser();
-  const { roomId } = useOutletContext<OutletContext>();
+  const { roomId, room } = useOutletContext<OutletContext>();
   const setState = useAnswerRushGameStore((store) => store.setState);
   const score = useAnswerRushGameStore((store) => store.score);
   const updateScore = useConvexMutation(api.rooms.updateAnswerRushScore);
+  const initAnswerRushGame = useAnswerRushGameStore((store) => store.init);
+  const updateGameState = useConvexMutation(api.games.updateGameState);
 
   // Subscribe to game state
   const { data: gameState } = useQuery(
@@ -24,6 +26,15 @@ const OnlineAnswerRushPlayPage = () => {
     })
   );
 
+  // Initialize game when entering play page
+  useEffect(() => {
+    if (gameState?.phase === "playing") {
+      initAnswerRushGame(room.gameSettings.answerRush);
+      setState("countdown");
+    }
+  }, [gameState?.phase, room.gameSettings.answerRush, initAnswerRushGame, setState]);
+
+  // Update score
   useEffect(() => {
     if (!gameState?.currentGameId) return;
     updateScore({ 
@@ -35,12 +46,19 @@ const OnlineAnswerRushPlayPage = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [score]);
 
+  // Handle game state transitions
   useEffect(() => {
-    if (gameState?.phase === "playing") {
-      setState("countdown");
+    if (!gameState) return;
+
+    const state = useAnswerRushGameStore.getState().state;
+    if (state === "results" && gameState.phase === "playing") {
+      updateGameState({
+        roomId,
+        phase: "finished",
+        endTime: Date.now(),
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState?.phase]);
+  }, [gameState, roomId, updateGameState]);
 
   return <AnswerRush CustomResults={AnswerRushResults} />;
 };

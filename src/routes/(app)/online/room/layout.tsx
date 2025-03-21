@@ -91,6 +91,7 @@ const RoomLayout = () => {
           updateGameState({
             roomId: room._id,
             phase: "playing",
+            currentGameId: String(crypto.randomUUID()),
           });
           navigate(`/app/online/room/${room._id}/play`);
         }
