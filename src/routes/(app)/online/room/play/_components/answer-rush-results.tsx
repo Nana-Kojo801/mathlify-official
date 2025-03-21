@@ -8,14 +8,8 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
-import { useEffect } from "react";
-
-interface GameResult {
-  userId: string;
-  username: string;
-  score: number;
-  rank: number;
-}
+import { useEffect, useMemo } from "react";
+import { Id } from "@convex/_generated/dataModel";
 
 const AnswerRushResults = () => {
   const navigate = useNavigate();
@@ -38,15 +32,40 @@ const AnswerRushResults = () => {
 
   // Get current game results from room data
   const currentGame = room?.answerRushResults?.find(
-    (game: { gameId: string }) => game.gameId === gameState?.currentGameId
+    (game) => game.gameId === gameState?.currentGameId
   );
+
+  // Sort results and calculate ranks
+  const sortedResults = useMemo(() => {
+    if (!currentGame?.results) return [];
+    
+    // Sort by score (highest first)
+    const sorted = [...currentGame.results].sort((a, b) => b.score - a.score);
+    
+    // Add rank
+    let currentRank = 1;
+    let lastScore = sorted[0]?.score ?? 0;
+    
+    return sorted.map((result, index) => {
+      // Same score = same rank
+      if (index > 0 && result.score < lastScore) {
+        currentRank = index + 1;
+        lastScore = result.score;
+      }
+      
+      return {
+        ...result,
+        rank: currentRank
+      };
+    });
+  }, [currentGame]);
 
   // Update user stats when game ends
   useEffect(() => {
-    if (!currentGame || !user) return;
+    if (!sortedResults.length || !user) return;
 
-    const userResult = currentGame.results.find(
-      (result: GameResult) => result.userId === user._id
+    const userResult = sortedResults.find(
+      (result) => result.userId === user._id
     );
     if (!userResult) return;
 
@@ -60,7 +79,7 @@ const AnswerRushResults = () => {
         answerRush: user.elo?.answerRush + (isWinner ? 10 : -5)
       }
     });
-  }, [currentGame, user, updateUser]);
+  }, [sortedResults, user, updateUser]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -81,22 +100,20 @@ const AnswerRushResults = () => {
     <div className="flex flex-col items-center gap-4 p-4">
       <h2 className="text-2xl font-bold">Game Results</h2>
       <div className="w-full max-w-md space-y-4">
-        {currentGame.results
-          .sort((a: GameResult, b: GameResult) => a.rank - b.rank)
-          .map((result: GameResult) => (
-            <div
-              key={result.userId}
-              className="flex items-center justify-between p-4 bg-card rounded-lg"
-            >
-              <div className="flex items-center gap-2">
-                {getRankIcon(result.rank)}
-                <span className="font-semibold">
-                  {result.userId === user?._id ? "You" : result.username}
-                </span>
-              </div>
-              <span className="text-lg font-bold">{result.score}</span>
+        {sortedResults.map((result) => (
+          <div
+            key={result.userId}
+            className="flex items-center justify-between p-4 bg-card rounded-lg"
+          >
+            <div className="flex items-center gap-2">
+              {getRankIcon(result.rank)}
+              <span className="font-semibold">
+                {result.userId === user?._id ? "You" : result.username}
+              </span>
             </div>
-          ))}
+            <span className="text-lg font-bold">{result.score}</span>
+          </div>
+        ))}
       </div>
       <Button
         onClick={() => navigate(`/app/online/room/${roomId}`)}
