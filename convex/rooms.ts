@@ -63,17 +63,20 @@ export const joinRoom = mutation({
   handler: async (ctx, { userId, roomId }) => {
     const room = (await ctx.db.get(roomId))!;
     await ctx.db.patch(roomId, {
-      members: [
-        ...room.members,
-        {
-          gamesLost: 0,
-          gamesWon: 0,
-          userId,
-        },
-      ],
+      members: Array.from(
+        new Set([
+          ...room.members,
+          {
+            gamesLost: 0,
+            gamesWon: 0,
+            userId,
+          },
+        ])
+      ),
     });
   },
 });
+
 
 export const leaveRoom = mutation({
   args: { userId: v.id("users"), roomId: v.id("rooms") },

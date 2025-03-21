@@ -9,12 +9,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
       includeAssets: ["/favicon.ico", "/apple-touch-icon.png"],
       manifest: {
-        name: 'Mathlify - Mental Math App',
-        short_name: 'Mathlify',
-        theme_color: '#00bfff',
+        name: "Mathlify - Mental Math App",
+        short_name: "Mathlify",
+        theme_color: "#00bfff",
+        background_color: "#101828",
         icons: [
           {
             src: "/web-app-manifest-192x192.png",
@@ -28,12 +29,27 @@ export default defineConfig({
           },
         ],
       },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^\/images\/.*\.(?:png|jpg|jpeg|svg|gif)$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "images-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+              },
+            },
+          },
+        ],
+      },
     }),
   ],
   resolve: {
     alias: {
       "@": "/src",
-      "@convex": "/convex"
+      "@convex": "/convex",
     },
   },
 });

@@ -11,6 +11,7 @@ import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAnswerRushGameStore } from "@/lib/stores/answer-rush-store";
+import { toast } from "sonner";
 
 const RoomLayout = () => {
   const params = useParams();
@@ -52,15 +53,16 @@ const RoomLayout = () => {
 
   useEffect(() => {
     if (room.isActive) setStartTimer(5);
-  }, [room._id, room.isActive]);
+  }, [room.isActive]);
 
   useEffect(() => {
-    if(!room.members.find(member => member.userId === room.ownerId)) {
-      deleteRoom({ roomId: room._id})
-      navigate("/app/online")
+    if (!room.members.find((member) => member.userId === room.ownerId)) {
+      deleteRoom({ roomId: room._id });
+      navigate("/app/online");
+      toast("Room owner left the group");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room.members])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.members]);
 
   useEffect(() => {
     if (startTimer <= 0 && !room.isActive) {
@@ -70,20 +72,11 @@ const RoomLayout = () => {
         initAnswerRushGame(room.gameSettings.answerRush);
         updateRoomCountdown({ roomId: room._id, value: false });
       }
-      updateRoomIsActive({ roomId: room._id, value: true });
       navigate("play");
+      updateRoomIsActive({ roomId: room._id, value: true });
     }
-  }, [
-    initAnswerRushGame,
-    navigate,
-    room._id,
-    room.gameSettings.answerRush,
-    room.gameSettings.type,
-    room.isActive,
-    startTimer,
-    updateRoomCountdown,
-    updateRoomIsActive,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.isActive, startTimer]);
 
   return (
     <PageLayout className="fixed left-0 top-0 bg-background">
@@ -123,7 +116,7 @@ export default function RoomSuspenseLayout() {
     return () => {
       leaveRoom({ roomId: params.roomId as Room["_id"], userId: user._id });
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
     <Suspense>

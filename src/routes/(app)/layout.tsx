@@ -1,6 +1,6 @@
 import { useAuth } from "@/components/auth-provider";
 import NavigationPanel from "@/components/navigation-panel";
-import { LoaderIcon } from "lucide-react";
+import SplashScreen from "@/components/splash-screen";
 import { Navigate, Outlet } from "react-router";
 
 const AppLayout = () => {
@@ -8,9 +8,7 @@ const AppLayout = () => {
 
   if (loading)
     return (
-      <div className="w-full h-full grid place-content-center">
-        <LoaderIcon className="animate-spin" size={40} />
-      </div>
+      <SplashScreen />
     );
   
     if(!authenticated) return <Navigate to="/auth/login" />;
