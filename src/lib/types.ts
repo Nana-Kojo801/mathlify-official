@@ -141,6 +141,21 @@ export type GamePhase =
   | "error"
   | "recovering";
 
+export type GameSettings = {
+  type: string;
+  casual: {
+    range: { from: number; to: number };
+    quantity: { min: number; max: number };
+    timeInterval: number;
+    timer: number;
+  };
+  answerRush: {
+    range: { from: number; to: number };
+    quantity: { min: number; max: number };
+    timer: number;
+  };
+};
+
 export interface GameState {
   phase: GamePhase;
   currentGameId: string | null;
