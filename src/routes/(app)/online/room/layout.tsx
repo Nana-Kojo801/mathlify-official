@@ -98,6 +98,13 @@ const RoomLayout = () => {
         break;
 
       case "playing":
+        // Ensure all users navigate to play page when game phase is "playing"
+        const currentPath = window.location.pathname;
+        const playPath = `/app/online/room/${room._id}/play`;
+        if (!currentPath.includes(playPath)) {
+          navigate(playPath);
+        }
+        
         if (endTime && now >= endTime) {
           updateGameState({
             roomId: room._id,
