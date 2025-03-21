@@ -132,3 +132,34 @@ export type Room = {
     };
   };
 };
+
+export type GamePhase = 
+  | "waiting" 
+  | "countdown" 
+  | "playing" 
+  | "finished"
+  | "error"
+  | "recovering";
+
+export interface GameState {
+  phase: GamePhase;
+  currentGameId: string | null;
+  players: {
+    userId: string;
+    username: string;
+    score: number;
+    isReady: boolean;
+    lastSeen: number;
+    isConnected: boolean;
+  }[];
+  settings: GameSettings;
+  startTime: number | null;
+  endTime: number | null;
+  error?: {
+    message: string;
+    code: string;
+    timestamp: number;
+  };
+  recoveryAttempts: number;
+  lastUpdate: number;
+}

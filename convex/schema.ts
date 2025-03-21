@@ -32,10 +32,15 @@ export default defineSchema({
   }),
   rooms: defineTable({
     ownerId: v.id("users"),
+    owner: v.object({
+      _id: v.id("users"),
+      username: v.string(),
+    }),
     name: v.string(),
     memberCount: v.number(),
     gamesPlayed: v.number(),
     isPublic: v.boolean(),
+    isCountdown: v.boolean(),
     isCountingdown: v.boolean(),
     isActive: v.boolean(),
     answerRushResults: v.array(
@@ -53,9 +58,13 @@ export default defineSchema({
     currentGameId: v.optional(v.string()),
     members: v.array(
       v.object({
+        user: v.object({
+          _id: v.id("users"),
+          username: v.string(),
+        }),
         userId: v.id("users"),
-        gamesWon: v.number(),
         gamesLost: v.number(),
+        gamesWon: v.number(),
       })
     ),
     gameSettings: v.object({
@@ -83,6 +92,57 @@ export default defineSchema({
         }),
         timer: v.float64(),
       }),
+    }),
+    gameState: v.object({
+      phase: v.string(),
+      currentGameId: v.optional(v.string()),
+      players: v.array(
+        v.object({
+          userId: v.string(),
+          username: v.string(),
+          score: v.number(),
+          isReady: v.boolean(),
+          lastSeen: v.number(),
+          isConnected: v.boolean(),
+        })
+      ),
+      settings: v.object({
+        type: v.string(),
+        casual: v.object({
+          range: v.object({
+            from: v.number(),
+            to: v.number(),
+          }),
+          quantity: v.object({
+            min: v.number(),
+            max: v.number(),
+          }),
+          timeInterval: v.number(),
+          timer: v.number(),
+        }),
+        answerRush: v.object({
+          range: v.object({
+            from: v.number(),
+            to: v.number(),
+          }),
+          quantity: v.object({
+            min: v.number(),
+            max: v.number(),
+          }),
+          timer: v.number(),
+        }),
+      }),
+      startTime: v.optional(v.number()),
+      endTime: v.optional(v.number()),
+      error: v.optional(
+        v.object({
+          message: v.string(),
+          code: v.string(),
+          timestamp: v.number(),
+        })
+      ),
+      recoveryAttempts: v.number(),
+      lastUpdate: v.number(),
     }),
   }).searchIndex("search_room", {
     searchField: "name",

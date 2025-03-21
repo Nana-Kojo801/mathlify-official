@@ -3,30 +3,44 @@ import { OutletContext } from "../_types";
 import OnlineAnswerRushPlayPage from "./_components/online-answer-rush";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 
 const OnlinePlayPage = () => {
   const { room } = useOutletContext<OutletContext>();
   const user = useLiveUser();
-  const setGameId = useConvexMutation(api.rooms.setGameId);
-  const isMounted = useRef(false);
-
-  useEffect(() => {
-    if (!isMounted.current) {
-      isMounted.current = true;
-      return;
-    }
-    if (room.ownerId === user._id)
-      setGameId({ gameId: String(crypto.randomUUID()), roomId: room._id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return room.gameSettings.type === "Answer Rush" ? (
-    <OnlineAnswerRushPlayPage />
-  ) : (
-    <div></div>
+  const updateGameState = useConvexMutation(api.games.updateGameState);
+  
+  // Subscribe to game state
+  const { data: gameState } = useQuery(
+    convexQuery(api.games.getGameState, {
+      roomId: room._id,
+    })
   );
+
+  // Initialize game when entering play page
+  useEffect(() => {
+    if (room.ownerId === user._id && gameState?.phase === "playing") {
+      updateGameState({
+        roomId: room._id,
+        currentGameId: String(crypto.randomUUID()),
+      });
+    }
+  }, [room._id, room.ownerId, user._id, gameState?.phase, updateGameState]);
+
+  if (room.gameSettings.type !== "Answer Rush") {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-lg text-gray-600">
+          {room.gameSettings.type} game mode is not yet implemented
+        </p>
+      </div>
+    );
+  }
+
+  return <OnlineAnswerRushPlayPage />;
 };
 
 export default OnlinePlayPage;

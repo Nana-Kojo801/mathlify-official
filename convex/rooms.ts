@@ -9,14 +9,22 @@ export const createRoom = mutation({
     isPublic: v.boolean(),
   },
   handler: async (ctx, { name, memberCount, ownerId, isPublic }) => {
+    const owner = await ctx.db.get(ownerId);
+    if (!owner) throw new Error("Owner not found");
+
     return await ctx.db.insert("rooms", {
       name,
       memberCount,
       ownerId,
+      owner: {
+        _id: ownerId,
+        username: owner.username,
+      },
       gamesPlayed: 0,
       members: [],
       isPublic,
       isActive: false,
+      isCountdown: false,
       isCountingdown: false,
       gameSettings: {
         type: "Casual",
@@ -34,6 +42,27 @@ export const createRoom = mutation({
       },
       answerRushResults: [],
       currentGameId: undefined,
+      gameState: {
+        phase: "waiting",
+        currentGameId: undefined,
+        players: [],
+        settings: {
+          type: "Casual",
+          casual: {
+            range: { from: 1, to: 10 },
+            quantity: { min: 5, max: 7 },
+            timeInterval: 1,
+            timer: 10,
+          },
+          answerRush: {
+            range: { from: 1, to: 10 },
+            quantity: { min: 3, max: 5 },
+            timer: 60,
+          },
+        },
+        recoveryAttempts: 0,
+        lastUpdate: Date.now(),
+      },
     });
   },
 });
@@ -46,7 +75,8 @@ export const getRoom = query({
     const members = await Promise.all(
       room.members.map(async (member) => {
         const user = (await ctx.db.get(member.userId))!;
-        return { user, ...member };
+        const { userId, gamesWon, gamesLost } = member;
+        return { user, userId, gamesWon, gamesLost };
       })
     );
 
@@ -62,6 +92,7 @@ export const joinRoom = mutation({
   args: { userId: v.id("users"), roomId: v.id("rooms") },
   handler: async (ctx, { userId, roomId }) => {
     const room = (await ctx.db.get(roomId))!;
+    const user = (await ctx.db.get(userId))!;
     await ctx.db.patch(roomId, {
       members: Array.from(
         new Set([
@@ -70,13 +101,16 @@ export const joinRoom = mutation({
             gamesLost: 0,
             gamesWon: 0,
             userId,
+            user: {
+              _id: userId,
+              username: user.username,
+            },
           },
         ])
       ),
     });
   },
 });
-
 
 export const leaveRoom = mutation({
   args: { userId: v.id("users"), roomId: v.id("rooms") },
