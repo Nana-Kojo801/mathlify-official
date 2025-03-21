@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
 
 export const initGameState = mutation({
   args: { roomId: v.id("rooms") },
