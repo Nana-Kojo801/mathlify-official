@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useParams } from "react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRoomQuery } from "./queries";
 import { Suspense, useCallback, useEffect, useRef } from "react";
-import { Room, GamePhase } from "@/lib/types";
+import { Room } from "@/lib/types";
 import { useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
