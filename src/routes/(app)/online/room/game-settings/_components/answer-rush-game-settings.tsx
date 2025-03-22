@@ -33,7 +33,7 @@ const AnswerRushGameSettings = () => {
     });
 
   const onSubmit = async (values: z.infer<typeof practiceAnswerRushSchema>) => {
-    await saveSettings({ roomId, patch: values });
+    await saveSettings({ roomId, settings: values });
     toast.success("Settings saved sucessfully", { duration: 2000 });
   };
   return (

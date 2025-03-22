@@ -33,7 +33,7 @@ const CasualGameSettings = () => {
     });
 
   const onSubmit = async (values: z.infer<typeof practiceCasualSchema>) => {
-    await saveSettings({ roomId, patch: values });
+    await saveSettings({ roomId, settings: values });
     toast.success("Settings saved sucessfully", { duration: 2000 });
   };
   return (
