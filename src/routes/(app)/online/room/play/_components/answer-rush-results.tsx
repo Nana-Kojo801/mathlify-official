@@ -102,15 +102,15 @@ const AnswerRushResults = () => {
   };
 
   // Navigate back to room when finished
-  useEffect(() => {
-    if (gameState?.phase === "finished") {
-      const timer = setTimeout(() => {
-        navigate(`/app/online/room/${roomId}`);
-      }, 5000); // Automatically return to room after 5 seconds
+  // useEffect(() => {
+  //   if (gameState?.phase === "finished") {
+  //     const timer = setTimeout(() => {
+  //       navigate(`/app/online/room/${roomId}`);
+  //     }, 5000); // Automatically return to room after 5 seconds
 
-      return () => clearTimeout(timer);
-    }
-  }, [gameState?.phase, navigate, roomId]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [gameState?.phase, navigate, roomId]);
 
   // If no results yet, show loading
   if (!sortedResults.length) {

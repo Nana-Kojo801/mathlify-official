@@ -25,7 +25,7 @@ const OnlinePlayPage = () => {
     if (room.ownerId === user._id && gameState?.phase === "playing") {
       updateGameState({
         roomId: room._id,
-        currentGameId: String(crypto.randomUUID()),
+        currentGameId: room.currentGameId,
       });
     }
   }, [room._id, room.ownerId, user._id, gameState?.phase, updateGameState]);
