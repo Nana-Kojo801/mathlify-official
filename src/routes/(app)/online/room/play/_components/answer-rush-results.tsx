@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
 import { api } from "@convex/_generated/api";
+import { useMemo } from "react";
 
 // Define a type for game results to include the rank property
 type GameResult = {
