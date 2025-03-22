@@ -6,7 +6,6 @@ import { OutletContext } from "../../_types";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useLiveUser } from "@/lib/hooks/useLiveUser";
-import { useEffect, useMemo } from "react";
 import { api } from "@convex/_generated/api";
 
 // Define a type for game results to include the rank property
