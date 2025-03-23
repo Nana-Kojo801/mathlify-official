@@ -1,8 +1,6 @@
 {
-  "name": "Mathlify - Mental Math App",
+  "name": "Mathlify - Mental Math Application",
   "short_name": "Mathlify",
-  "theme_color": "#00bfff",
-  "background_color": "#101828",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -16,5 +14,8 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "theme_color": "#00bfff",
+  "background_color": "#101828",
+  "display": "standalone"
 }
