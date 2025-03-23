@@ -10,7 +10,7 @@ const HomePage = () => {
       <header className="p-4 flex justify-between items-center border-b border-gray-700">
         <div className="flex items-center gap-3">
           <img
-            src="/logo.png"
+            src="/src/assets/images/logo.png"
             alt="Mathlify Logo"
             className="w-[40px] rounded-full"
           />

@@ -169,6 +169,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
       setAuthenticated(true);
       if (location.pathname === "/") navigate("/app");
     }
+    
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -194,6 +195,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Send presence update every 15 seconds
     updatePresence();
+    // eslint-disable-next-line prefer-const
     interval = setInterval(updatePresence, 15000); // 15s polling
 
     // Set offline when the user leaves

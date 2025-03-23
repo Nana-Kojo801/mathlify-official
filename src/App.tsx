@@ -33,29 +33,29 @@ const FriendRequestsPage = lazy(
 );
 const FriendChatPage = lazy(() => import("./routes/(app)/chat/page.tsx"));
 const ProfilePage = lazy(() => import("./routes/(app)/profile/page.tsx"));
-const OnlinePage = lazy(() => import("./routes/(app)/online/page.tsx"));
-const CreateRoomPage = lazy(
-  () => import("./routes/(app)/online/create-room/page.tsx")
-);
-const RoomPage = lazy(() => import("./routes/(app)/online/room/page.tsx"));
-const MembersPage = lazy(
-  () => import("./routes/(app)/online/room/members/page.tsx")
-);
-const RoomSuspenseLayout = lazy(
-  () => import("./routes/(app)/online/room/layout.tsx")
-);
-const JoinRoomPage = lazy(
-  () => import("./routes/(app)/online/join-room/page.tsx")
-);
-const RoomChatPage = lazy(
-  () => import("./routes/(app)/online/room/chat/page.tsx")
-);
-const GameSettingsPage = lazy(
-  () => import("./routes/(app)/online/room/game-settings/page.tsx")
-);
-const OnlinePlayPage = lazy(
-  () => import("./routes/(app)/online/room/play/page.tsx")
-);
+// const OnlinePage = lazy(() => import("./routes/(app)/online/page.tsx"));
+// const CreateRoomPage = lazy(
+//   () => import("./routes/(app)/online/create-room/page.tsx")
+// );
+// const RoomPage = lazy(() => import("./routes/(app)/online/room/page.tsx"));
+// const MembersPage = lazy(
+//   () => import("./routes/(app)/online/room/members/page.tsx")
+// );
+// const RoomSuspenseLayout = lazy(
+//   () => import("./routes/(app)/online/room/layout.tsx")
+// );
+// const JoinRoomPage = lazy(
+//   () => import("./routes/(app)/online/join-room/page.tsx")
+// );
+// const RoomChatPage = lazy(
+//   () => import("./routes/(app)/online/room/chat/page.tsx")
+// );
+// const GameSettingsPage = lazy(
+//   () => import("./routes/(app)/online/room/game-settings/page.tsx")
+// );
+// const OnlinePlayPage = lazy(
+//   () => import("./routes/(app)/online/room/play/page.tsx")
+// );
 
 const App = () => {
   return (
@@ -88,7 +88,7 @@ const App = () => {
             <Route path="friend-requests" element={<FriendRequestsPage />} />
             <Route path="chat-friend/:friendId" element={<FriendChatPage />} />
 
-            <Route path="online" element={<OnlinePage />} />
+            {/* <Route path="online" element={<OnlinePage />} />
             <Route path="online/create-room" element={<CreateRoomPage />} />
             <Route path="online/join-room" element={<JoinRoomPage />} />
             <Route path="online/room/:roomId" element={<RoomSuspenseLayout />}>
@@ -97,7 +97,7 @@ const App = () => {
               <Route path="chat" element={<RoomChatPage />} />
               <Route path="game-settings" element={<GameSettingsPage />} />
               <Route path="play" element={<OnlinePlayPage />} />
-            </Route>
+            </Route> */}
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

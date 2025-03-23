@@ -14,7 +14,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as friendMessages from "../friendMessages.js";
-import type * as games from "../games.js";
 import type * as migrations_init_game_state from "../migrations/init_game_state.js";
 import type * as requests from "../requests.js";
 import type * as roomMessages from "../roomMessages.js";
@@ -32,7 +31,6 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   friendMessages: typeof friendMessages;
-  games: typeof games;
   "migrations/init_game_state": typeof migrations_init_game_state;
   requests: typeof requests;
   roomMessages: typeof roomMessages;
